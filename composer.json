@@ -1,0 +1,27 @@
+{
+    "name": "desalort/orchestrator",
+    "description": "Orquestador multi-agente provider-agnóstico: descompone un hito en tareas con contrato y las ejecuta en paralelo con modelos LLM económicos, con gate de verificación y aislamiento por git worktree.",
+    "type": "library",
+    "license": "proprietary",
+    "keywords": ["llm", "agents", "orchestrator", "together", "ollama", "codegen"],
+    "require": {
+        "php": ">=8.3",
+        "ext-curl": "*",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Desalort\\Orchestrator\\": "src/"
+        }
+    },
+    "bin": [
+        "bin/orchestrate.php",
+        "bin/agent-worker.php"
+    ],
+    "config": {
+        "sort-packages": true
+    }
+}
