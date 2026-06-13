@@ -92,5 +92,12 @@ return [
         'prompts_dir'      => __DIR__ . '/prompts',
         'conventions_file' => __DIR__ . '/CONVENTIONS.md', // fuente única; se antepone a cada rol
         'worktrees_dir'    => sys_get_temp_dir() . '/agent-worktrees',
+
+        // Segundos máximos por verificación; mata un verifyCommand colgado (bucle infinito
+        // del agente) para que no bloquee la corrida. 0 = sin límite. Requiere `timeout` (coreutils).
+        'verify_timeout'   => 600,
+        // Si se define, el STDERR de cada worker se guarda en <dir>/<taskId>.worker.log
+        // (fatales de PHP, errores de composer…). Si se omite, se descarta.
+        'worker_log_dir'   => __DIR__ . '/logs/orchestrator',
     ],
 ];

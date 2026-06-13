@@ -29,6 +29,7 @@ final class Orchestrator
         private readonly string  $planPath,
         private readonly string  $workerBin,
         private readonly Closure $log,
+        private readonly ?string $workerLogDir = null,
     ) {}
 
     /**
@@ -105,6 +106,24 @@ final class Orchestrator
             escapeshellarg($taskId),
         );
 
+        // Con worker_log_dir, el STDERR del worker (fatales de PHP, errores de composer,
+        // trazas fuera del verificador) se persiste por tarea en vez de descartarse.
+        if ($this->workerLogDir !== null) {
+            if (!is_dir($this->workerLogDir) && !mkdir($this->workerLogDir, 0775, true) && !is_dir($this->workerLogDir)) {
+                throw new RuntimeException("No se pudo crear {$this->workerLogDir}");
+            }
+            $stderrLog   = $this->workerLogDir . '/' . $this->slug($taskId) . '.worker.log';
+            $descriptors = [1 => ['pipe', 'w'], 2 => ['file', $stderrLog, 'a']];
+            $pipes       = [];
+            $handle      = proc_open($cmd, $descriptors, $pipes);
+            if (!is_resource($handle)) {
+                throw new RuntimeException("No se pudo lanzar el worker para {$taskId}");
+            }
+            stream_set_blocking($pipes[1], false);
+
+            return ['handle' => $handle, 'stdout' => $pipes[1]];
+        }
+
         $descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
         $pipes = [];
         $handle = proc_open($cmd, $descriptors, $pipes);
@@ -112,9 +131,14 @@ final class Orchestrator
             throw new RuntimeException("No se pudo lanzar el worker para {$taskId}");
         }
         stream_set_blocking($pipes[1], false);
-        fclose($pipes[2]); // descartamos stderr del worker
+        fclose($pipes[2]); // sin worker_log_dir: se descarta el stderr (comportamiento histórico)
 
         return ['handle' => $handle, 'stdout' => $pipes[1]];
+    }
+
+    private function slug(string $taskId): string
+    {
+        return (string) preg_replace('/[^a-z0-9_-]/i', '-', $taskId);
     }
 
     private function decodeResult(string $id, string $stdout): TaskResult

@@ -76,10 +76,14 @@ try {
         worktreesDir: (string) ($runtime['worktrees_dir'] ?? (sys_get_temp_dir() . '/agent-worktrees')),
     );
 
+    // verify_timeout (s): mata un verificador colgado (p.ej. bucle infinito del agente)
+    // para que no bloquee la corrida. 0 = sin límite. Default 600.
+    $verifyTimeout = (int) ($runtime['verify_timeout'] ?? 600);
+
     $runner = new AgentRunner(
         gateway:      $gateway,
         workspace:    $workspace,
-        verifier:     new CommandVerifier(),
+        verifier:     new CommandVerifier($verifyTimeout),
         systemPrompt: $system,
         maxAttempts:  (int) ($runtime['max_attempts'] ?? 3),
         baseRef:      (string) ($runtime['base_ref'] ?? 'HEAD'),

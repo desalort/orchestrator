@@ -133,6 +133,20 @@ final class AgentRunner
             ? '(libre dentro del módulo)'
             : implode(', ', $task->scopePaths);
 
+        // Inyecta el contenido ACTUAL de los ficheros del ámbito (si existen): así el agente
+        // conserva firma, namespace e imports del esqueleto y solo reemplaza el cuerpo, en vez
+        // de reconstruirlos de memoria (fuente típica de errores en ficheros con muchos `use`).
+        $scopeContenido = '';
+        foreach ($task->scopePaths as $rel) {
+            $abs = $workDir . '/' . ltrim($rel, '/');
+            if (is_file($abs)) {
+                $scopeContenido .= "\n--- {$rel} ---\n" . (string) file_get_contents($abs) . "\n";
+            }
+        }
+        $scopeBloque = $scopeContenido === ''
+            ? ''
+            : "\n\nFICHEROS ACTUALES DE TU ÁMBITO (mantén firma/namespace/imports; reemplaza el cuerpo):{$scopeContenido}";
+
         return <<<TXT
             TAREA: {$task->instruction}
 
@@ -140,7 +154,7 @@ final class AgentRunner
 
             VERIFICADOR (tu trabajo debe hacer que pase): {$task->verifyCommand}
 
-            CONTEXTO RELEVANTE:{$context}
+            CONTEXTO RELEVANTE:{$context}{$scopeBloque}
 
             Entrega tu trabajo llamando a la tool "write_files" con el contenido
             completo de cada fichero creado o modificado.

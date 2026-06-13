@@ -35,9 +35,13 @@ OpenRouter comparten el driver `openai_compatible`; solo Anthropic tiene el suyo
 
 - PHP ≥ 8.3 (`ext-curl`, `ext-json`)
 - `git` (para el aislamiento por worktree)
+- `timeout` (coreutils) si usas `verify_timeout` (recomendado; ver más abajo)
 - `desalort/llm-gateway` (^1.0) — providers, *tool calling*, `Usage` normalizado
   y retries; se instala automáticamente como dependencia
 - En el proyecto destino: lo que usen tus `verifyCommand` (p. ej. PHPUnit, PHPStan)
+- **El modelo de cada rol debe soportar *tool calling* forzado** (`toolChoice: 'required'`):
+  la entrega es vía la tool `write_files`. Verificado OK: familia Qwen (Instruct), DeepSeek.
+  **No sirven** modelos que solo razonan sin emitir la tool (p. ej. `openai/gpt-oss-*`).
 
 ## Instalación
 
@@ -81,6 +85,23 @@ setUp worktree -> [ llamar modelo -> aplicar ficheros -> verificar ] xN -> tearD
 Si el verificador falla, su salida se realimenta al modelo para que se autocorrija,
 hasta `max_attempts`. Sin verificador no hay ahorro: un modelo barato sin gate solo
 produce deuda técnica barata.
+
+Además, el prompt incluye el **contenido actual de los ficheros de `scopePaths`** (si existen):
+así el agente conserva firma, namespace e imports del esqueleto y solo reemplaza el cuerpo,
+en vez de reconstruirlos de memoria (fuente típica de errores en ficheros con muchos `use`).
+
+## Escribir buenos `verifyCommand` (entorno del worktree)
+
+El verificador corre en el **worktree** de la tarea, que sale de `base_ref` y **solo contiene
+ficheros versionados** — por tanto **no hay `vendor/`** (está en `.gitignore`). Además se ejecuta
+vía `exec()` → `/bin/sh` (en Linux suele ser **dash**, no bash). Consecuencias prácticas:
+
+- Deja el worktree autosuficiente: instala dependencias en el propio comando, p. ej.
+  `composer install -q --prefer-dist --no-interaction && vendor/bin/phpunit --filter X`.
+  Usa `--prefer-dist` (no `--prefer-source`): el `vendor/` con histórico git puede pesar GB y
+  los worktrees corren en paralelo (a menudo sobre `tmpfs`).
+- **Nada de bashismos** (`${PIPESTATUS[0]}`, arrays…): dash falla con "Bad substitution".
+- Define `verify_timeout` para que un bucle no terminante del agente no cuelgue la corrida.
 
 ## Protocolo de salida del modelo
 
@@ -128,11 +149,24 @@ Cada `profile` en `agents.php` declara `cost_input_per_1m` / `cost_output_per_1m
 `desalort/llm-gateway`) y calcula `costUsd` del `TaskResult`. El resumen final
 de `orchestrate.php` muestra tokens y coste por tarea, más una línea de totales.
 
+## Observabilidad y robustez (`runtime`)
+
+- **`verify_timeout`** (s, default 600): el `verifyCommand` corre bajo `timeout(1)`; un agente con
+  un bucle no terminante (p. ej. bisección sin guardia) se mata (exit 124 → reintento/fallo) en
+  vez de colgar la corrida entera. `0` = sin límite. Requiere `timeout` (coreutils).
+- **`worker_log_dir`** (opcional): si se define, el **STDERR de cada worker** se persiste en
+  `<dir>/<taskId>.worker.log` (fatales de PHP, errores de composer, trazas fuera del verificador)
+  en vez de descartarse. Útil para diagnosticar fallos que no son del verificador.
+
 ## Limitaciones conocidas / a endurecer
 
-- Pool de procesos casero con `proc_open`; `symfony/process` daría mejor control de timeouts.
+- Pool de procesos casero con `proc_open`; `symfony/process` daría aún mejor control.
 - `verifyCommand` se ejecuta vía shell: úsalo solo con planes de confianza.
+- La salida del verificador por intento no se persiste como transcript estructurado (sí el
+  STDERR del worker con `worker_log_dir`); para un log por intento, envuélvelo en el propio
+  `verifyCommand` (`… | tee -a <log>` con redirección POSIX que preserve el exit code).
 
 ## Estado
 
-Beta. Extraído del sistema de trabajo multi-agente (junio 2026).
+Beta. Extraído del sistema de trabajo multi-agente (junio 2026). `v2.1`: `verify_timeout`,
+`worker_log_dir`, inyección del scope file en el prompt y nota de compatibilidad de modelos.
