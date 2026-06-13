@@ -16,13 +16,5 @@ Implementar el código que satisface la tarea y hace pasar su verificador.
 - No escribas comentarios que repitan lo que el código ya dice.
 
 ## Formato de salida (obligatorio)
-Para cada fichero creado o modificado:
-
-```
-=== FILE: ruta/relativa.php ===
-<contenido completo del fichero>
-=== END FILE ===
-```
-
-No escribas nada fuera de esos bloques salvo, si acaso, una línea breve de
-explicación al final.
+Entrega tu trabajo invocando la tool `write_files`, con el contenido completo
+de cada fichero creado o modificado.

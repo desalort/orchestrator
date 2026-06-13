@@ -37,30 +37,41 @@ return [
     ],
 
     // ---- PERFILES: modelo concreto + parámetros ----
+    // cost_input_per_1m / cost_output_per_1m: USD por millón de tokens,
+    // ajustar según la tarifa vigente del proveedor (0.0 si no se quiere
+    // estimar coste, p.ej. modelos locales en Ollama).
     'profiles' => [
         'codegen_fast' => [
-            'provider'    => 'together',
-            'model'       => 'Qwen/Qwen3-Coder-30B',
-            'temperature' => 0.1,
-            'max_tokens'  => 8000,
+            'provider'           => 'together',
+            'model'              => 'Qwen/Qwen3-Coder-30B',
+            'temperature'        => 0.1,
+            'max_tokens'         => 8000,
+            'cost_input_per_1m'  => 0.20,
+            'cost_output_per_1m' => 0.80,
         ],
         'codegen_local' => [
-            'provider'    => 'ollama',
-            'model'       => 'qwen3-coder',
-            'temperature' => 0.1,
-            'max_tokens'  => 8000,
+            'provider'           => 'ollama',
+            'model'              => 'qwen3-coder',
+            'temperature'        => 0.1,
+            'max_tokens'         => 8000,
+            'cost_input_per_1m'  => 0.0,
+            'cost_output_per_1m' => 0.0,
         ],
         'reasoning_review' => [
-            'provider'    => 'together',
-            'model'       => 'deepseek-ai/DeepSeek-V3.2',
-            'temperature' => 0.0,
-            'max_tokens'  => 6000,
+            'provider'           => 'together',
+            'model'              => 'deepseek-ai/DeepSeek-V3.2',
+            'temperature'        => 0.0,
+            'max_tokens'         => 6000,
+            'cost_input_per_1m'  => 0.27,
+            'cost_output_per_1m' => 1.10,
         ],
         'docs' => [
-            'provider'    => 'ollama',
-            'model'       => 'qwen3-coder',
-            'temperature' => 0.3,
-            'max_tokens'  => 4000,
+            'provider'           => 'ollama',
+            'model'              => 'qwen3-coder',
+            'temperature'        => 0.3,
+            'max_tokens'         => 4000,
+            'cost_input_per_1m'  => 0.0,
+            'cost_output_per_1m' => 0.0,
         ],
     ],
 

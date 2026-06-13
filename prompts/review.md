@@ -21,5 +21,6 @@ desviaciones de las convenciones. Tu salida son **notas de revisión**, no parch
 - Distingue lo crítico de lo opinable.
 
 ## Formato de salida
-Un informe en markdown, agrupado por severidad (Crítico / Importante / Menor).
+Entrega tu informe invocando la tool `write_files`: un único fichero markdown
+con el informe completo, agrupado por severidad (Crítico / Importante / Menor).
 Para cada hallazgo: ubicación, descripción y sugerencia.

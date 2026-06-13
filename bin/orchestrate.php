@@ -69,7 +69,9 @@ $results = $orchestrator->run(array_values($tasks));
 
 // --- Resumen ---
 echo "\n=== RESUMEN ===\n";
-$failed = 0;
+$failed     = 0;
+$totalTokens = 0;
+$totalCost   = 0.0;
 foreach ($results as $r) {
     $mark = match ($r->status) {
         TaskStatus::Done    => 'OK  ',
@@ -80,8 +82,20 @@ foreach ($results as $r) {
     if ($r->status !== TaskStatus::Done) {
         $failed++;
     }
-    printf("%s  %-22s %-8s rama: %s\n", $mark, $r->taskId, $r->status->value, $r->branch ?? '-');
+    $totalTokens += $r->usage->totalTokens;
+    $totalCost   += $r->costUsd;
+    printf(
+        "%s  %-22s %-8s rama: %-30s tokens: %6d  coste: $%.4f\n",
+        $mark,
+        $r->taskId,
+        $r->status->value,
+        $r->branch ?? '-',
+        $r->usage->totalTokens,
+        $r->costUsd,
+    );
 }
+
+printf("\ntokens totales: %d  coste total: $%.4f\n", $totalTokens, $totalCost);
 
 echo "\n" . ($failed === 0
     ? "Todas las tareas pasaron su verificador. Revisa las ramas agent/* antes de mergear.\n"

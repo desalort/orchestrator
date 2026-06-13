@@ -4,10 +4,14 @@
     "type": "library",
     "license": "proprietary",
     "keywords": ["llm", "agents", "orchestrator", "together", "ollama", "codegen"],
+    "repositories": [
+        { "type": "vcs", "url": "git@github.com:desalort/llm-gateway.git", "no-api": true }
+    ],
     "require": {
         "php": ">=8.3",
         "ext-curl": "*",
-        "ext-json": "*"
+        "ext-json": "*",
+        "desalort/llm-gateway": "^1.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^11.0"
@@ -15,6 +19,11 @@
     "autoload": {
         "psr-4": {
             "Desalort\\Orchestrator\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Desalort\\Orchestrator\\Tests\\": "tests/"
         }
     },
     "bin": [

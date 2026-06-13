@@ -51,8 +51,8 @@ try {
     $runtime = $config['runtime'] ?? [];
     $factory = new ProviderFactory($config);
 
-    $profile  = $factory->profileForRole($task->role);
-    $provider = $factory->providerForDriver($profile->driver);
+    $profile = $factory->profileForRole($task->role);
+    $gateway = $factory->gatewayForRole($task->role);
 
     // Prompt de sistema = CONVENTIONS.md (fuente única de verdad) + prompt de rol.
     // Así las convenciones se incluyen POR REFERENCIA: viven en un solo fichero.
@@ -77,7 +77,7 @@ try {
     );
 
     $runner = new AgentRunner(
-        provider:     $provider,
+        gateway:      $gateway,
         workspace:    $workspace,
         verifier:     new CommandVerifier(),
         systemPrompt: $system,
@@ -98,4 +98,10 @@ echo "\n" . json_encode([
     'attempts'   => $result->attempts,
     'branch'     => $result->branch,
     'lastOutput' => mb_substr($result->lastOutput, 0, 4000),
+    'usage'      => [
+        'prompt_tokens'     => $result->usage->promptTokens,
+        'completion_tokens' => $result->usage->completionTokens,
+        'total_tokens'      => $result->usage->totalTokens,
+    ],
+    'cost_usd'   => $result->costUsd,
 ], JSON_THROW_ON_ERROR) . "\n";

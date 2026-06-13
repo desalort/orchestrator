@@ -35,6 +35,8 @@ OpenRouter comparten el driver `openai_compatible`; solo Anthropic tiene el suyo
 
 - PHP ≥ 8.3 (`ext-curl`, `ext-json`)
 - `git` (para el aislamiento por worktree)
+- `desalort/llm-gateway` (^1.0) — providers, *tool calling*, `Usage` normalizado
+  y retries; se instala automáticamente como dependencia
 - En el proyecto destino: lo que usen tus `verifyCommand` (p. ej. PHPUnit, PHPStan)
 
 ## Instalación
@@ -82,16 +84,13 @@ produce deuda técnica barata.
 
 ## Protocolo de salida del modelo
 
-El agente espera los ficheros en bloques:
-
-```
-=== FILE: ruta/relativa.php ===
-<contenido completo>
-=== END FILE ===
-```
-
-Para modelos con *tool calling* fiable, sustituir el parser por function calling
-con un esquema `write_file` reduce mucho los fallos de formato.
+El agente entrega su trabajo mediante *tool calling*: cada `LlmRequest` declara
+una tool `write_files` (`{ files: [{ path, content }] }`) y se fuerza con
+`toolChoice: 'required'`, vía `desalort/llm-gateway` (válido tanto para
+Anthropic como para cualquier proveedor OpenAI-compatible). El `AgentRunner`
+lee `response->toolCalls`, vuelca `files` al workspace y, si el verificador
+falla, realimenta la salida como `Message::toolResult` para que el modelo
+corrija y vuelva a llamar a `write_files`.
 
 ## Convenciones (fuente única de verdad)
 
@@ -104,10 +103,11 @@ los agentes baratos beben de la misma fuente. No dupliques convenciones en los p
 ```
 src/
   Orchestrator.php        DAG + pool de procesos (paralelismo)
-  AgentRunner.php         bucle llamar/editar/verificar/reintentar
-  Contracts/              LlmProvider, Verifier, Workspace
-  Data/                   Task, ModelProfile, Message, *Result, TaskStatus (readonly/enum)
-  Provider/               OpenAiCompatible, Anthropic, ProviderFactory
+  Dag.php                  lógica pura del grafo de dependencias (testeable sin proc_open)
+  AgentRunner.php         bucle llamar/editar/verificar/reintentar + usage/coste
+  Contracts/              Verifier, Workspace
+  Data/                   Task, ModelProfile, *Result, TaskStatus (readonly/enum)
+  Provider/               ProviderFactory (role -> profile -> provider -> LlmGateway)
   Verifier/CommandVerifier.php
   Workspace/GitWorktreeWorkspace.php
 bin/
@@ -116,16 +116,22 @@ bin/
 config/agents.example.php
 prompts/                  codegen, frontend, tests, docs, review
 examples/plan.example.php
+tests/                    suite PHPUnit del propio paquete
 PLAN_FORMAT.md            spec del plan.php
 ```
 
+## Coste y tokens
+
+Cada `profile` en `agents.php` declara `cost_input_per_1m` / `cost_output_per_1m`
+(USD por millón de tokens, default `0.0`). El `AgentRunner` acumula
+`promptTokens`/`completionTokens` de cada respuesta (vía `Usage` de
+`desalort/llm-gateway`) y calcula `costUsd` del `TaskResult`. El resumen final
+de `orchestrate.php` muestra tokens y coste por tarea, más una línea de totales.
+
 ## Limitaciones conocidas / a endurecer
 
-- Parser de salida por regex (frágil con modelos flojos) → migrar a tool calling.
-- Sin límite de coste/tokens por tarea ni telemetría de gasto.
 - Pool de procesos casero con `proc_open`; `symfony/process` daría mejor control de timeouts.
 - `verifyCommand` se ejecuta vía shell: úsalo solo con planes de confianza.
-- Sin tests propios todavía.
 
 ## Estado
 

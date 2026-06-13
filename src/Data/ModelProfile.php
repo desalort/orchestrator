@@ -16,5 +16,7 @@ final readonly class ModelProfile
         public float   $temperature,
         public int     $maxTokens,
         public int     $timeout,
+        public float   $costInputPer1M = 0.0,  // USD por millón de tokens de entrada
+        public float   $costOutputPer1M = 0.0, // USD por millón de tokens de salida
     ) {}
 }

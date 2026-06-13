@@ -16,8 +16,5 @@ Escribir o actualizar documentación (normalmente el `README.md` de un módulo).
 - Devuelve **ficheros completos**.
 
 ## Formato de salida (obligatorio)
-```
-=== FILE: ruta/relativa.md ===
-<contenido completo>
-=== END FILE ===
-```
+Entrega tu trabajo invocando la tool `write_files`, con el contenido completo
+de cada fichero creado o modificado.

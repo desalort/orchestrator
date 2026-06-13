@@ -17,8 +17,5 @@ Escribir o ampliar tests **PHPUnit** para el código indicado.
 - Devuelve **ficheros completos**.
 
 ## Formato de salida (obligatorio)
-```
-=== FILE: ruta/relativa.php ===
-<contenido completo>
-=== END FILE ===
-```
+Entrega tu trabajo invocando la tool `write_files`, con el contenido completo
+de cada fichero creado o modificado.

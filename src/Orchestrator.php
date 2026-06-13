@@ -58,10 +58,10 @@ final class Orchestrator
                 if (count($running) >= $maxConc) {
                     break;
                 }
-                if (!$this->depsReady($task, $done)) {
+                if (!Dag::ready($task, $done)) {
                     continue;
                 }
-                if ($this->depsFailed($task, $done)) {
+                if (Dag::failed($task, $done)) {
                     $done[$id] = new TaskResult($id, TaskStatus::Skipped, 0, null, 'dependencia fallida');
                     unset($pending[$id]);
                     ($this->log)("skip {$id}: dependencia fallida");
@@ -124,41 +124,6 @@ final class Orchestrator
         $lastNl  = strrpos($trimmed, "\n");
         $line    = $lastNl === false ? $trimmed : substr($trimmed, $lastNl + 1);
 
-        $data = json_decode($line, true);
-        if (!is_array($data)) {
-            return new TaskResult($id, TaskStatus::Failed, 0, null, "Salida ilegible del worker:\n{$stdout}");
-        }
-
-        return new TaskResult(
-            $id,
-            TaskStatus::tryFrom((string) ($data['status'] ?? 'failed')) ?? TaskStatus::Failed,
-            (int) ($data['attempts'] ?? 0),
-            isset($data['branch']) ? (string) $data['branch'] : null,
-            (string) ($data['lastOutput'] ?? ''),
-        );
-    }
-
-    /** @param array<string,TaskResult> $done */
-    private function depsReady(Task $t, array $done): bool
-    {
-        foreach ($t->dependsOn as $dep) {
-            if (!isset($done[$dep])) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /** @param array<string,TaskResult> $done */
-    private function depsFailed(Task $t, array $done): bool
-    {
-        foreach ($t->dependsOn as $dep) {
-            if (in_array($done[$dep]->status, [TaskStatus::Failed, TaskStatus::Skipped], true)) {
-                return true;
-            }
-        }
-
-        return false;
+        return TaskResult::fromWorkerJson($id, $line);
     }
 }
