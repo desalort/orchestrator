@@ -56,12 +56,19 @@ $log = static function (string $msg): void {
     fwrite(STDERR, '[' . date('H:i:s') . "] {$msg}\n");
 };
 
+// worker_log_dir (opcional): si se define, el STDERR de cada worker se persiste en
+// <dir>/<taskId>.worker.log en vez de descartarse (diagnóstico de fatales/composer).
+$workerLogDir = isset($config['runtime']['worker_log_dir'])
+    ? (string) $config['runtime']['worker_log_dir']
+    : null;
+
 $orchestrator = new Orchestrator(
-    runtimeCfg: $config['runtime'] ?? [],
-    configPath: $configPath,
-    planPath:   $planPath,
-    workerBin:  __DIR__ . '/agent-worker.php',
-    log:        $log,
+    runtimeCfg:   $config['runtime'] ?? [],
+    configPath:   $configPath,
+    planPath:     $planPath,
+    workerBin:    __DIR__ . '/agent-worker.php',
+    log:          $log,
+    workerLogDir: $workerLogDir,
 );
 
 $log('Iniciando orquestación de ' . count($tasks) . ' tareas');

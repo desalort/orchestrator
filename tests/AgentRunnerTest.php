@@ -9,6 +9,7 @@ use Desalort\LlmGateway\Data\Message;
 use Desalort\LlmGateway\Data\Usage;
 use Desalort\LlmGateway\LlmGateway;
 use Desalort\Orchestrator\AgentRunner;
+use Desalort\Orchestrator\Contracts\WorkspaceInterface;
 use Desalort\Orchestrator\Data\ModelProfile;
 use Desalort\Orchestrator\Data\Task;
 use Desalort\Orchestrator\Data\TaskStatus;
@@ -219,5 +220,78 @@ final class AgentRunnerTest extends TestCase
         $secondRequest = $provider->requests[1];
         $roles         = array_map(static fn (Message $m): string => $m->role, $secondRequest->messages);
         self::assertContains('user', $roles);
+    }
+
+    public function testInjectsCurrentScopeFileContentIntoPrompt(): void
+    {
+        // Workspace real con un esqueleto en el ámbito: el prompt debe incluir su contenido
+        // para que el agente conserve firma/imports en vez de reconstruirlos de memoria.
+        $dir = sys_get_temp_dir() . '/orch-scope-' . uniqid('', true);
+        mkdir($dir . '/src', 0775, true);
+        $stub = "<?php\n\nnamespace App;\n\nuse App\\Contracts\\FooInterface;\n\nfinal class Foo implements FooInterface\n{\n    public function bar(): int { throw new \\LogicException('TODO'); }\n}\n";
+        file_put_contents($dir . '/src/Foo.php', $stub);
+
+        $workspace = new class($dir) implements WorkspaceInterface {
+            public function __construct(private readonly string $dir)
+            {
+            }
+
+            public function setUp(string $taskId, string $baseRef): string
+            {
+                return $this->dir;
+            }
+
+            public function applyEdits(string $taskId, array $files): void
+            {
+            }
+
+            public function branchName(string $taskId): string
+            {
+                return 'agent/' . $taskId;
+            }
+
+            public function tearDown(string $taskId): void
+            {
+            }
+        };
+
+        $provider = new FakeLlmProvider([
+            $this->writeFilesToolCall('call-1', [['path' => 'src/Foo.php', 'content' => '<?php // done']]),
+        ]);
+        $verifier = new QueueVerifier([new VerifierResult(passed: true, output: 'OK', exitCode: 0)]);
+
+        $task = new Task(
+            id: 'task-scope',
+            role: 'codegen',
+            instruction: 'Implementa Foo::bar',
+            verifyCommand: 'vendor/bin/phpunit',
+            scopePaths: ['src/Foo.php'],
+        );
+
+        $runner = new AgentRunner(
+            gateway:      new LlmGateway($provider),
+            workspace:    $workspace,
+            verifier:     $verifier,
+            systemPrompt: 'Eres un agente.',
+            maxAttempts:  3,
+            baseRef:      'HEAD',
+        );
+
+        $runner->run($task, $this->profile());
+
+        $userMessages = array_values(array_filter(
+            $provider->requests[0]->messages,
+            static fn (Message $m): bool => $m->role === 'user',
+        ));
+        self::assertNotEmpty($userMessages);
+        $prompt = (string) $userMessages[0]->content;
+
+        self::assertStringContainsString('FICHEROS ACTUALES DE TU ÁMBITO', $prompt);
+        self::assertStringContainsString('use App\\Contracts\\FooInterface;', $prompt);
+        self::assertStringContainsString('final class Foo implements FooInterface', $prompt);
+
+        @unlink($dir . '/src/Foo.php');
+        @rmdir($dir . '/src');
+        @rmdir($dir);
     }
 }
